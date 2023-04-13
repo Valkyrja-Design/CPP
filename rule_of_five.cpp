@@ -36,7 +36,7 @@ public:
     rule_of_five& operator=(const rule_of_five& other) // copy assignment
     {
         std::cout << "Copy assignment operator called!\n";
-        return *this = rule_of_five(other); // why does this call move assignment operator?
+        return *this = rule_of_five(other); // move assignment called because rule_of_five() is a temporary
     }
  
     rule_of_five& operator=(rule_of_five&& other) noexcept // move assignment
@@ -66,12 +66,12 @@ int main(){
     rule_of_five rof2{"rof2"};
     rule_of_five rof3;
     rof3 = rof2;
-    std::cout << "61\n";
+    std::cout << "69\n";
     rof3 = std::move(rof2);
-    std::cout << "63\n";
+    std::cout << "71\n";
     rule_of_five rof4{std::move(rof1)};
-    std::cout << "65\n";
-    auto rof5 = foo();      // nothing gets called! Because Copy Elision!
-    std::cout << "66\n";
+    std::cout << "73\n";
+    auto rof5 = foo();      // nothing gets called because Copy Elision!
+    std::cout << "75\n";
     rof5 = foo();       // but it does here! 
 }
