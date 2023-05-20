@@ -38,5 +38,4 @@ int main(){
     const T2 t2;      // const class, calls the user-provided default ctor
                       // t2.mem is default-initialized (to indeterminate value)
     int *x;           // indeterminate
-    
 }
