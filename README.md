@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [Trivial Types](#trivial-types)
 - [Scoped and Unscoped Enums](#scoped-and-unscoped-enums)
 - [User-provided Functions](#user-provided-functions)
 - [Default Constructors](#default-constructors)
@@ -31,6 +32,15 @@
     - [Return Value Optimization](#return-value-optimization)
     - [Constructing from temporaries](#constructing-from-temporaries)
 - [`using` vs `typedef`](#using-vs-typedef)
+- [Abbreviated function templates (since C++20)](#abbreviated-function-templates-since-c20)
+- [Lambda Expressions](#lambda-expressions)
+- [Limitations](#limitations)
+    - [Member function templates cannot be virtual](#member-function-templates-cannot-be-virtual)
+
+
+# Trivial Types
+
+A class or struct is trivial type if it has compiler-provided or explicitly defaulted special member functions. It occupies a contiguous region of memory and can have different access specifiers.
 
 # Scoped and Unscoped Enums
 
@@ -91,11 +101,7 @@ If there are no *user-declared* constructors of any type provided in a class the
 ## Implicitly-defined default constructor
 If the implicitly-declared is not defined as deleted, it is defined by the compiler if it is **[odr-used](https://en.cppreference.com/w/cpp/language/definition#ODR-use)**
 
-<<<<<<< HEAD
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 struct A
 {
     int x;
@@ -178,11 +184,7 @@ We must provide member initializers for bases and non-static data members, such 
 If the name of the class itself appears in the member initializer list, then the list must consist of only that one member initializer and such a constructor is called *delegating constructor*, and the constructor selected by the initializer is called the *target constructor*. The target constructor is executed after which the control reaches the delegating constructor and its body is executed.  
 **Delegating constructors cannot be recursive**
 
-<<<<<<< HEAD
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 class Foo
 {
 public: 
@@ -193,7 +195,6 @@ public:
 
 - [cppreference](https://en.cppreference.com/w/cpp/language/constructor)
 
-<<<<<<< HEAD
 # Rule of five/three/zero
 
 ### Rule of zero
@@ -217,20 +218,15 @@ If a class requires a user-defined constructor, a user-defined destructor or a u
 - Conversion from a pointer type or pointer-to-member type to bool.
 - [cppreference](https://en.cppreference.com/w/cpp/language/list_initialization)
 
-=======
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 # Initialization
 
 ### Default Initialization 
 
-<<<<<<< HEAD
 ### Syntax 
 
 - ```T object ;```
 - ```new T```
 
-=======
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 This is performed when an object is constructed with no initializer. The effects of default initialization are :
 
 - if the object is a **non-POD** class type, then its default constructor is called to provide the initial value to the object.
@@ -241,7 +237,6 @@ This is performed when an object is constructed with no initializer. The effects
 
 - [cppreference](https://en.cppreference.com/w/cpp/language/default_initialization)
 
-<<<<<<< HEAD
 ### Non-local Initialization 
 
 All non-local variables with static storage duration are initialized as part of program startup, before the execution of ```main()``` begins. The initialization occurs in two distinct stages:
@@ -275,10 +270,6 @@ Variables to be zero-initialized are placed in the .bss segment of the program i
 - ```new T{}```
 - ```Class::Class(...) : member {} { ... }```
 
-=======
-### Value Initialization 
-
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 This is performed when an object is constructed with an empty initializer.  
 - If ```{}``` is used and the type T is an aggregate type, then [*aggregate-initialization*](#aggregate-initialization) is performed instead of value-initialization.  
 - If the type T is a class type with no default constructors but has a constructor taking ```std::initializer_list```, [*list-initialization*](#list-initialization) is performed.
@@ -293,7 +284,6 @@ The effects of value-initialization are:
 **Notes**: 
 1. The syntax ```T object();``` *does not* initialize an object; it declares a function instead!  
 2. **References cannot be value-initialized**  
-<<<<<<< HEAD
 3. The standard specifies that zero-initialization is not performed when the class has a user-provided or deleted default constructor, which implies that whether said default constructor is selected by overload resolution is not considered. All known compilers performs additional zero-initialization if a non-deleted defaulted default constructor is selected.
 
 ```cpp
@@ -663,50 +653,12 @@ An aggregate needs to be one of the following types:
     - no default member initializers (**since C++11, until C++14**)
 - [stackoverflow](https://stackoverflow.com/questions/4178175/what-are-aggregates-and-pods-and-how-why-are-they-special/7189821#7189821)
 
-=======
-
-- [cppreference](https://en.cppreference.com/w/cpp/language/value_initialization)
-
-### Aggregate Initialization
-
-- [Aggregate initialization](https://en.cppreference.com/w/cpp/language/aggregate_initialization)
-
-### List Initialization
-
-- [List initialization](https://en.cppreference.com/w/cpp/language/list_initialization)
-
-### Zero Initialization
-
-- [Zero initialization](https://en.cppreference.com/w/cpp/language/zero_initialization)
-- [Default initialization](https://en.cppreference.com/w/cpp/language/default_initialization)
-- [Value initialization](https://en.cppreference.com/w/cpp/language/value_initialization)
-- [Copy initialization](https://en.cppreference.com/w/cpp/language/copy_initialization)
-
-
-# Rule of five/three/zero
-
-### Rule of zero
-It says that a class should rely on its members (smart pointers) to manage memory resources and avoid implementing custom copy/move constructors or copy/move assignment operators. 
-
-### Rule of three 
-If a class requires a user-defined constructor, a user-defined destructor or a user-defined copy assignment operator, it almost certainly requires all three of them.  
-
-### Rule of five 
-**The presence of a user-defined (or ```= default``` or ```= delete``` declared) destructor, copy constructor, or copy assignment operator prevents implicit definition of move constructor and move assignment operator.** So if a class requires move semantics then we must provide all five of the special member functions.
-
-- [cppreference](https://en.cppreference.com/w/cpp/language/rule_of_three)
-- [stackoverflow](https://stackoverflow.com/questions/44997955/rule-of-zero-confusion)
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 
 # Constant folding
 
 Optimization performed by the compiler where it works out the result of an expression at compile time and directly inserts that into the generated code. For example:
-<<<<<<< HEAD
 
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 #define ONE 1
 #define TWO 2 
 
@@ -720,12 +672,8 @@ int main(){
 # As-if Rule
 
 Basically the compiler can perform any optimization as long as the *observable behavior* of the program doesn't change. For example:
-<<<<<<< HEAD
 
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 int& preinc(int& n) { return ++n; }
 int add(int n, int m) { return n+m; }
  
@@ -748,10 +696,6 @@ int main()
 ```
 
 Here, the compiler can eliminate all calls to ```preinc``` and ```add``` to just a single expression  
-<<<<<<< HEAD
-
-=======
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 ```
 result = 2*input + 3;
 ```
@@ -768,12 +712,8 @@ It is a type of optimization performed by the compiler involving the elision (or
 ## Named Return Value Optimization
 
 It happens when an (named) object returned by value from a function has its copy elided
-<<<<<<< HEAD
 
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 #include <iostream>
 
 class A{
@@ -785,6 +725,8 @@ class A{
         ~A(){
             std::cout << "Destructor called!\n";
         }
+    public:
+        int x = 2;
 };
 
 A foo(){
@@ -801,10 +743,6 @@ int main(){
 ```
 
 the output of this program is just
-<<<<<<< HEAD
-
-=======
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 ```
 Constructor called!
 Destructor called!
@@ -815,12 +753,8 @@ If we had defined a move constructor then that would have been elided in ```A a 
 ## Return Value Optimization 
 
 This happens when a temporary object is returned from a function.
-<<<<<<< HEAD
 
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 #include <iostream>
 
 class A{
@@ -838,13 +772,9 @@ int main(){
     A a = foo(); // copying of temporary elided
 }
 ```
-<<<<<<< HEAD
 
 Output
 
-=======
-Output
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 ```
 Constructor called!
 Destructor called!
@@ -852,11 +782,7 @@ Destructor called!
 
 ## Constructing from temporaries 
 
-<<<<<<< HEAD
 ```cpp
-=======
-```
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
 #include <iostream>
 
 class A{
@@ -879,8 +805,7 @@ int main(){
 - [stackoverflow](https://stackoverflow.com/questions/12953127/what-are-copy-elision-and-return-value-optimization/12953150#12953150)
 - [cppreference](https://en.cppreference.com/w/cpp/language/copy_elision)
 
-<<<<<<< HEAD
-## `using` vs `typedef`
+# `using` vs `typedef`
 
 Semantically the same thing but have some difference in allowed contexts and ease of usage in case of template aliasing. A *typedef-declaration* is an *init-statement* and is thus allowed in contexts which allow *init-statement*.
 
@@ -941,8 +866,151 @@ for (using Foo = int; Foo f : v) { (void)f; }
 ```
 
 - [stackoverflow](https://stackoverflow.com/questions/10747810/what-is-the-difference-between-typedef-and-using-in-c11)
-=======
-# Aggregates
 
-- [stackoverflow](https://stackoverflow.com/questions/4178175/what-are-aggregates-and-pods-and-how-why-are-they-special/7189821#7189821)
->>>>>>> 6a695c049d952e6500805b45669628dfc108838d
+
+# Abbreviated function templates (since C++20)
+
+When `auto` appears in the parameter list of a function declaration or of a function template declaration, the declaration declares a function template, and one 'invented' template parameter for each `auto` is appended to the template parameter list. 
+
+```cpp
+void f1(auto); // same as template<class T> void f1(T)
+```
+
+Abbreviated function templates can be specialized like all function templates.
+
+# Lambda Expressions (since C++11)
+
+A lambda expression is a convenient way of defining an anonymous function object (also called a *closure*) right at the location where it is invoked or passed as an argument to a function.
+
+Syntax
+
+- `[ captures ] ( params ) specs requires ﻿(optional) { body }`
+- `[ captures ] { body }`
+
+The capture clause specifies which variables from the surrounding scope are captured, and whether the capture is by value or reference. Variables with `&` are accessed by reference and by value otherwise.  
+You can also specify a *capture-default* in the beginning of the clause. The only capture defaults are 
+
+- `&` (implicity capture the **used** automatic variables by reference)
+- `=` (implicity capture the **used** automatic variables by value)
+
+The current object `*this` can be implicitly captured if either capture default is present. If implicitly captured, it is always captured by reference, even if the capture default is `=`.  
+*The implicit capture of `*this` when the capture default is `=` is deprecated. (since C++20)*
+
+If the capture default is `&`, subsequent captures must not begin with `&`:
+
+```cpp
+struct S2 { void f(int i); };
+void S2::f(int i)
+{
+    [&] {};          // OK: by-reference capture default
+    [&, i] {};       // OK: by-reference capture, except i is captured by copy
+    [&, &i] {};      // Error: by-reference capture when by-reference is the default
+    [&, this] {};    // OK, equivalent to [&]
+    [&, this, i] {}; // OK, equivalent to [&, i]
+}
+```
+
+If the capture-default is `=`, subsequent simple captures must begin with `&` or be `*this` (*since C++17*) or `this` (*since C++20*):
+
+```cpp
+struct S2 { void f(int i); };
+void S2::f(int i)
+{
+    [=] {};        // OK: by-copy capture default
+    [=, &i] {};    // OK: by-copy capture, except i is captured by reference
+    [=, *this] {}; // until C++17: Error: invalid syntax
+                   // since C++17: OK: captures the enclosing S2 by copy
+    [=, this] {};  // until C++20: Error: this when = is the default
+                   // since C++20: OK, same as [=]
+}
+```
+
+Any capture may appear only once, and its name must be different from any parameter name.   
+Only lambda-expressions defined at block scope or in a default member initializer may have a capture-default or captures without initializers. For such lambda-expression, the reaching scope is defined as the set of enclosing scopes up to and including the innermost enclosing function (and its parameters). This includes nested block scopes and the scopes of enclosing lambdas if this lambda is nested.
+
+### Generalized Capture (since C++14)
+
+In C++14, you can introduce and initialize new variables in the capture clause, without the need to have those variables exist in the lambda function's enclosing scope. The initialization can be expressed as any arbitrary expression; the type of the new variable is deduced from the type produced by the expression. This feature lets you capture move-only variables (such as `std::unique_ptr`) from the surrounding scope and use them in a lambda.
+
+A capture with an initializer acts as if it declares and explicitly captures a variable declared with type `auto`, whose declarative region is the body of the lambda expression (that is, it is not in scope within its initializer), except that:
+
+if the capture is *by-copy*, the non-static data member of the closure object is another way to refer to that auto variable.
+if the capture is *by-reference*, the reference variable's lifetime ends when the lifetime of the closure object ends.
+
+```cpp
+int x = 4;
+ 
+auto y = [&r = x, x = x + 1]() -> int   // r is a reference to x
+{
+    r += 2;
+    return x * x;
+}(); // updates ::x to 6 and initializes y to 25.
+
+pNums = make_unique<vector<int>>(nums);
+//...
+        auto a = [ptr = move(pNums)]()
+        {
+            // use ptr
+        };
+```
+
+Class members cannot be captured explicitly by a capture without initializer (as mentioned above, only variables are permitted in the capture list):
+
+```cpp
+class S
+{
+    int x = 0;
+ 
+    void f()
+    {
+        int i = 0;
+    //  auto l1 = [i, x] { use(i, x); };      // error: x is not a variable
+        auto l2 = [i, x = x] { use(i, x); };  // OK, copy capture
+        i = 1; x = 1; l2(); // calls use(0,0)
+        auto l3 = [i, &x = x] { use(i, x); }; // OK, reference capture
+        i = 2; x = 2; l3(); // calls use(1,2)
+    }
+};
+```
+
+When a lambda captures a member using implicit by-copy capture, it does not make a copy of that member variable: the use of a member variable m is treated as an expression `(*this).m`, and `*this` is always implicitly captured by reference:
+
+```cpp
+class S
+{
+    int x = 0;
+ 
+    void f()
+    {
+        int i = 0;
+ 
+        auto l1 = [=] { use(i, x); }; // captures a copy of i and
+                                      // a copy of the this pointer
+        i = 1; x = 1; l1();           // calls use(0, 1), as if
+                                      // i by copy and x by reference
+ 
+        auto l2 = [i, this] { use(i, x); }; // same as above, made explicit
+        i = 2; x = 2; l2();           // calls use(1, 2), as if
+                                      // i by copy and x by reference
+ 
+        auto l3 = [&] { use(i, x); }; // captures i by reference and
+                                      // a copy of the this pointer
+        i = 3; x = 2; l3();           // calls use(3, 2), as if
+                                      // i and x are both by reference
+ 
+        auto l4 = [i, *this] { use(i, x); }; // makes a copy of *this,
+                                             // including a copy of x
+        i = 4; x = 4; l4();           // calls use(3, 2), as if
+                                      // i and x are both by copy
+    }
+};
+```
+
+
+# Limitations
+
+## Member function templates cannot be virtual
+
+Member function templates cannot be declared virtual. This constraint is imposed because the usual implementation of the virtual function call mechanism uses a fixed-size table with one entry per virtual function. However, the number of instantiations of a member function template is not fixed until the entire program has been translated. Hence, supporting virtual member function templates would require support for a whole new kind of mechanism in C++ compilers and linkers. In contrast, the ordinary members of class templates can be virtual because their number is fixed when a class is instantiated
+
+- [stackoverflow](https://stackoverflow.com/questions/2354210/can-a-class-member-function-template-be-virtual)
