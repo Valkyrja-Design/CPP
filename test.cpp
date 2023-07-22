@@ -1,27 +1,21 @@
 #include <iostream>
 
+template < typename T >
+void call_with_true_double_only(T) =delete; //prevent call through type promotion of any T to double from succeeding.
+
+void call_with_true_double_only(const double& param) = delete;
+void call_with_true_double_only(double& param) { return; } // also define for const double, double&, etc. as needed.
+
 class A{
     public:
-        A(){ std::cout << "Constructor called!\n"; }
-        A(const A& a){ 
-            std::cout << "Copy constructor called!\n";
-        }
-        ~A(){
-            std::cout << "Destructor called!\n";
-        }
-    public:
-        int x = 2;
+        int x;
 };
 
-A foo(){
-    A a;
-    a.x = 25;
-    return a;   // elided
-}
+class B : public A{
+
+};
 
 int main(){
-    A a = foo();    // copy constructor elided here as well
-    /* 
-      foo::a is effectively constructed into the memory for main::a and it is destructed after main::a's lifetime
-    */
+    B b;
+    std::cout << b.A::x << '\n';
 }

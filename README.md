@@ -2,6 +2,7 @@
 
 - [Trivial Types](#trivial-types)
 - [Scoped and Unscoped Enums](#scoped-and-unscoped-enums)
+- [Narrowing Conversions](#narrowing-conversions)
 - [User-provided Functions](#user-provided-functions)
 - [Default Constructors](#default-constructors)
     - [Implicitly-declared default constructor](#implicitly-declared-default-constructor)
@@ -12,7 +13,13 @@
     - [Rule of zero](#rule-of-zero)
     - [Rule of three](#rule-of-three)
     - [Rule of five](#rule-of-five)
-- [Narrowing Conversions](#narrowing-conversions)
+- [`= default` & `= delete`]()
+- [Auto Generation of Special Member Functions](#auto-generation-of-special-member-functions)
+    - [Default Constructor](#default-constructor)
+    - [Copy Constructor](#copy-constructor)
+    - [Copy-assignment Operator](#copy-assignment-operator)
+    - [Move Constructor](#move-constructor)
+    - [Move-assignment Operator](#move-assignment-operator)
 - [Initialization](#initialization)
     - [Default Initialization](#default-initialization)
     - [Non-local Initialization](#non-local-initialization)
@@ -208,6 +215,53 @@ If a class requires a user-defined constructor, a user-defined destructor or a u
 
 - [cppreference](https://en.cppreference.com/w/cpp/language/rule_of_three)
 - [stackoverflow](https://stackoverflow.com/questions/44997955/rule-of-zero-confusion)
+
+# `= default`
+
+You can default any special member function to instruct the compiler to generate the default implementation. This is also useful to reinstate a special member function whose automatic generation was prevented by its corresponding rules. Default special member functions perform better so we should prefer them over explicitly declaration if we want the default behavior. You can also default a special member function outside the body of the class.
+
+# `= delete`
+
+You can delete special member functions as well as normal member functions and non-member functions to prevent them from being defined or called. It must be deleted as it is declared; you can't delete it later after declaring as you could do with default.  
+
+Deleting of normal member function or non-member functions prevents problematic type promotions from causing an unintended function to be called. This works because deleted functions still participate in overload resolution and provide a better match than the function that could be called after the types are promoted. The function call resolves to the more-specific—but deleted—function and causes a compiler error.
+
+```cpp
+// deleted overload prevents call through type promotion of float to double from succeeding.
+void call_with_true_double_only(float) =delete;
+void call_with_true_double_only(double param) { return; }
+
+template < typename T >
+void call_with_true_double_only(T) =delete; //prevent call through type promotion of any T to double from succeeding.
+
+void call_with_true_double_only(double param) { return; } // also define for const double, double&, etc. as needed.
+```
+
+
+# Auto Generation of Special Member Functions
+
+### Default Constructor
+
+The default constructor is generated if there's not user-declared constructor.
+
+### Copy Constructor 
+
+If there's no user-declared copy constructor, one is declared implicitly. If the class declares a move constructor or a move-assignment operator, the implicitly declared copy constructor is defined as deleted otherwise it is defined as defaulted. If a copy-assignment operator or destructor is explicitly declared, then automatic generation of copy constructor is deprecated.
+
+### Copy-assignment Operator
+
+Similar to copy constructor. Deprecated if the class has an user-declared copy constructor or an user-declared destructor.
+
+### Move Constructor
+
+If the class does not explicitly declare a move constructor, it'll be automatically generated if and only if the class does not have an user-declared copy constructor, copy-assignment operator, move-assignment operator and destructor.
+
+### Move-assignment Operator 
+
+Similar to move constructor.
+
+- [stackoverflow](https://stackoverflow.com/questions/4943958/conditions-for-automatic-generation-of-default-copy-move-ctor-and-copy-move-assi)
+- [Microsoft C++ documentation](https://learn.microsoft.com/en-us/cpp/cpp/explicitly-defaulted-and-deleted-functions?view=msvc-170)
 
 # Narrowing Conversions
 
