@@ -13,7 +13,9 @@
     - [Rule of zero](#rule-of-zero)
     - [Rule of three](#rule-of-three)
     - [Rule of five](#rule-of-five)
-- [`= default` & `= delete`]()
+- [`= default`](#default)
+- [`= delete`](#delete)
+- [`explicit`](#explicit)
 - [Auto Generation of Special Member Functions](#auto-generation-of-special-member-functions)
     - [Default Constructor](#default-constructor)
     - [Copy Constructor](#copy-constructor)
@@ -237,6 +239,68 @@ void call_with_true_double_only(T) =delete; //prevent call through type promotio
 void call_with_true_double_only(double param) { return; } // also define for const double, double&, etc. as needed.
 ```
 
+# `explicit`
+
+A constructor with a single required parameter is considered an implicit conversion function, meaning it converts the parameter type to the class type. We can use `explicit` keyword to prevent this. A constructor declared `explicit` converts to class type only when [direct-initialization](#direct-initialization) or explicit casting is done. You can also use it for conversion functions.  
+
+For example:
+
+```cpp
+struct Z { };
+
+struct X { 
+    explicit X(int a){} // X can be constructed from int explicitly
+    explicit operator Z (){ // X can be converted to Z explicitly
+        return Z{};
+    }
+};
+
+struct Y{
+    Y(int a){} // int can be implicitly converted to Y
+    operator Z (){ // Y can be implicitly converted to Z
+        return Z{};
+    }
+};
+
+
+void foo(X x) { }
+void bar(Y y) { }
+void baz(Z z) { }
+
+int main(){
+    // function calls
+    // foo(2);                     // error: no implicit conversion int to X possible
+    foo(X(2));                  // OK: direct initialization: explicit conversion
+    foo(static_cast<X>(2));     // OK: explicit conversion
+
+    bar(2);                     // OK: implicit conversion via Y(int) 
+    bar(Y(2));                  // OK: direct initialization
+    bar(static_cast<Y>(2));     // OK: explicit conversion
+
+    // object initialization
+    // X x2 = 2;                   // error: no implicit conversion int to X possible
+    X x3(2);                    // OK: direct initialization
+    X x4 = X(2);                // OK: direct initialization
+    X x5 = static_cast<X>(2);   // OK: explicit conversion 
+
+    Y y2 = 2;                   // OK: implicit conversion via Y(int)
+    Y y3(2);                    // OK: direct initialization
+    Y y4 = Y(2);                // OK: direct initialization
+    Y y5 = static_cast<Y>(2);   // OK: explicit conversion
+
+    // conversion function
+    X x1{ 0 };
+    Y y1{ 0 };
+
+    // baz(x1);                    // error: X not implicitly convertible to Z
+    baz(Z(x1));                 // OK: explicit initialization
+    baz(static_cast<Z>(x1));    // OK: explicit conversion
+
+    baz(y1);                    // OK: implicit conversion via Y::operator Z()
+    baz(Z(y1));                 // OK: direct initialization
+    baz(static_cast<Z>(y1));    // OK: explicit conversion
+}
+```
 
 # Auto Generation of Special Member Functions
 
