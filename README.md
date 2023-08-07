@@ -41,8 +41,8 @@
     - [Return Value Optimization](#return-value-optimization)
     - [Constructing from temporaries](#constructing-from-temporaries)
 - [`using` vs `typedef`](#using-vs-typedef)
-- [Abbreviated function templates (since C++20)](#abbreviated-function-templates-since-c20)
-- [Lambda Expressions](#lambda-expressions)
+- [Abbreviated function templates](#abbreviated-function-templates-since-c20)
+- [Lambda Expressions](#lambda-expressions-since-c11)
 - [Limitations](#limitations)
     - [Member function templates cannot be virtual](#member-function-templates-cannot-be-virtual)
 
@@ -301,6 +301,8 @@ int main(){
     baz(static_cast<Z>(y1));    // OK: explicit conversion
 }
 ```
+
+- [stackoverflow](https://stackoverflow.com/questions/121162/what-does-the-explicit-keyword-mean)
 
 # Auto Generation of Special Member Functions
 
@@ -1012,7 +1014,14 @@ You can also specify a *capture-default* in the beginning of the clause. The onl
 - `=` (implicity capture the **used** automatic variables by value)
 
 The current object `*this` can be implicitly captured if either capture default is present. If implicitly captured, it is always captured by reference, even if the capture default is `=`.  
-*The implicit capture of `*this` when the capture default is `=` is deprecated. (since C++20)*
+*The implicit capture of `*this` when the capture default is `=` is deprecated. (since C++20)*.  
+
+A lambda expression can *use* a variable without capturing it if the variable
+- is a non-local variable or has static storage duration
+
+A lambda expression can *read* a variable without capturing it if the variable 
+- is a const non-volatile integral or enumeration type that has been initialized with a constant expression, or
+- is `constexpr` and has no mutable members
 
 If the capture default is `&`, subsequent captures must not begin with `&`:
 
