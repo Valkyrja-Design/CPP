@@ -1,3 +1,5 @@
+// Source: https://stackoverflow.com/questions/81870/is-it-possible-to-print-a-variables-type-in-standard-c/64490578#64490578
+
 #include <string_view>
 #include <iostream>
 

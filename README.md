@@ -43,6 +43,8 @@
 - [`using` vs `typedef`](#using-vs-typedef)
 - [Abbreviated function templates](#abbreviated-function-templates-since-c20)
 - [Lambda Expressions](#lambda-expressions-since-c11)
+- [`inline`](#inline)
+    - [`inline` vs `static`](#inline-vs-static)
 - [Limitations](#limitations)
     - [Member function templates cannot be virtual](#member-function-templates-cannot-be-virtual)
 
@@ -1132,7 +1134,27 @@ class S
     }
 };
 ```
+# `inline`
 
+`inline` makes a function an *inline function* which allows it to be defined in multiple translation units. `inline` doesn't have any affect on the ability of the compiler to *inline* a function call, it is upto the compiler to inline the function call or ignore it and inline another call which you didn't even specify.  
+
+`inline`ing a function also *enables* the compiler the ability to *inline* a function call since the compiler doesn't have access to function definitions of object files other than the one it is currently producing and it must have access to the function definition in order to *inline* the call.  
+
+Every translation unit that uses that function must provide its own definition of it
+
+## `inline` vs `static`
+
+Both are very different in what they instruct the compiler to do.  
+
+`inline` allows multiple definitions of the function in different translation units. The compiler will then *inline* the function calls or merge the function definitions from different translation units so that the result function exists only once in the final executable i.e., the functions will have the same address across translation units (and will share their static variables).  
+
+On the other hand, `static` instructs the compiler to generate the function in every translation unit where it is defined and not just share it. This means that the multiple copies of the function exist in the executable (the same function will have different address in different translation units)
+
+
+- [stackoverflow-inline-functions](https://stackoverflow.com/questions/29796264/is-there-still-a-use-for-inline)
+- [stackoverflow-inline-vs-static](https://stackoverflow.com/questions/22102919/static-vs-inline-for-functions-implemented-in-header-files)
+- [stackoverflow-inline-variables](https://stackoverflow.com/questions/38043442/how-do-inline-variables-work)
+- [cppreference](https://en.cppreference.com/w/cpp/language/inline)
 
 # Limitations
 
