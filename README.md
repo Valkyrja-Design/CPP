@@ -40,6 +40,10 @@
     - [Named Return Value Optimization](#named-return-value-optimization)
     - [Return Value Optimization](#return-value-optimization)
     - [Constructing from temporaries](#constructing-from-temporaries)
+- [`using`](#using)
+    - [Type alias](#type-alias)
+    - [using-declaration](#using-declaration)
+    - [using-directive](#using-directive)
 - [`using` vs `typedef`](#using-vs-typedef)
 - [Abbreviated function templates](#abbreviated-function-templates-since-c20)
 - [Lambda Expressions](#lambda-expressions-since-c11)
@@ -310,7 +314,7 @@ int main(){
 
 ### Default Constructor
 
-The default constructor is generated if there's not user-declared constructor.
+The default constructor is generated if there's no user-declared constructor.
 
 ### Copy Constructor 
 
@@ -927,6 +931,178 @@ int main(){
 - [stackoverflow](https://stackoverflow.com/questions/12953127/what-are-copy-elision-and-return-value-optimization/12953150#12953150)
 - [cppreference](https://en.cppreference.com/w/cpp/language/copy_elision)
 
+# `using`
+
+## Type alias
+
+- `using identifier = type-id;`
+- `template < template-parameter-list >`  
+`using identifier = type-id ;`
+
+## *using-declaration*
+
+- `using typename(optional) nested-name-specifier unqualified-id ;		(until C++17)`
+- `using declarator-list ;		                                        (since C++17)`
+
+These can be used to introduce namespace members into other namespaces and blocks, or to introduce base class members into derived classes.
+
+### In namespace scope
+
+Using-declaration introduces a member of another namespace into current namespace or block scope.
+
+```cpp
+#include <iostream>
+#include <string>
+ 
+using std::string;
+ 
+int main()
+{
+    string str = "Example";
+    using std::cout;
+    cout << str;
+}
+```
+
+### In class definition
+
+Using-declaration *introduces a member* of a base class into the derived class definition, such as to expose a protected member of base as public member of derived. In this case, nested-name-specifier must name a base class of the one being defined. If the name is the name of an overloaded member function of the base class, all base class member functions with that name are introduced. If the derived class already has a member with the same name, parameter list, and qualifications, the derived class member hides or overrides (doesn't conflict with) the member that is introduced from the base class. 
+
+```cpp
+#include <iostream>
+ 
+struct B
+{
+    virtual void f(int) { std::cout << "B::f\n"; }
+    void g(char)        { std::cout << "B::g\n"; }
+    void h(int)         { std::cout << "B::h\n"; }
+protected:
+    int m; // B::m is protected
+    typedef int value_type;
+};
+ 
+struct D : B
+{
+    using B::m;          // D::m is public
+    using B::value_type; // D::value_type is public
+ 
+    using B::f;
+    void f(int) { std::cout << "D::f\n"; } // D::f(int) overrides B::f(int)
+ 
+    using B::g;
+    void g(int) { std::cout << "D::g\n"; } // both g(int) and g(char) are visible
+ 
+    using B::h;
+    void h(int) { std::cout << "D::h\n"; } // D::h(int) hides B::h(int)
+};
+ 
+int main()
+{
+    D d;
+    B& b = d;
+ 
+//  b.m = 2;  // Error: B::m is protected
+    d.m = 1;  // protected B::m is accessible as public D::m
+ 
+    b.f(1);   // calls derived f()
+    d.f(1);   // calls derived f()
+    std::cout << "----------\n";
+ 
+    d.g(1);   // calls derived g(int)
+    d.g('a'); // calls base g(char), exposed via using B::g;
+    std::cout << "----------\n";
+ 
+    b.h(1);   // calls base h()
+    d.h(1);   // calls derived h()
+}
+```
+
+## *using-directive*
+
+`using namespace namespace-name;`
+
+Using-directives can only be used in namespace and block scope (not class scope). From the point of view of name lookup of any name after a using-directive and until the end of the scope in which it appears, every name from namespace-name is visible *as if* it were *declared in the nearest enclosing namespace which contains both the using-directive and namespace-name*.
+
+It does not add any names to the region where it appears unlike *using-declaration*, and thus does not prevent identical names from being declared.
+
+Using directives are transitive in the sense that if a inside the namespace used in the using-directive there is another using-directive, the effect as if the second directive was declared besides the first.
+
+```cpp
+namespace A
+{
+    int i;
+}
+ 
+namespace B
+{
+    int i;
+    int j;
+ 
+    namespace C
+    {
+        namespace D
+        {
+            using namespace A; // all names from A injected into global namespace
+ 
+            int j;
+            int k;
+            int a = i;         // i is B::i, because A::i is hidden by B::i
+        }
+ 
+        using namespace D; // names from D are injected into C
+                           // names from A are injected into global namespace
+ 
+        int k = 89; // OK to declare name identical to one introduced by a using
+        int l = k;  // ambiguous: C::k or D::k since they're in the same scope now
+        int m = i;  // ok: B::i hides A::i
+        int n = j;  // ok: D::j hides B::j
+    }
+}
+```
+
+If, after using a using-directive for a namespace, that namespace is extended to add additional members/using-directives, those additional members are *also* visible through this using-directive.
+
+```cpp
+namespace D
+{
+    int d1;
+    void f(char);
+}
+using namespace D; // introduces D::d1, D::f, D::d2, D::f,
+                   // E::e, and E::f into global namespace!
+ 
+int d1;            // OK: no conflict with D::d1 when declaring
+ 
+namespace E
+{
+    int e;
+    void f(int);
+}
+ 
+namespace D            // namespace extension
+{
+    int d2;
+    using namespace E; // transitive using-directive
+    void f(int);
+}
+ 
+void f()
+{
+    d1++;    // error: ambiguous ::d1 or D::d1?
+    ::d1++;  // OK
+    D::d1++; // OK
+    d2++;    // OK, d2 is D::d2
+ 
+    e++;     // OK: e is E::e due to transitive using
+ 
+    f(1);    // error: ambiguous: D::f(int) or E::f(int)?
+    f('a');  // OK: the only f(char) is D::f(char)
+}
+```
+
+- [cppreference-using-declaration](https://en.cppreference.com/w/cpp/language/using_declaration)
+- [cppreference-using-directives](https://en.cppreference.com/w/cpp/language/namespace#Using-directives)
+
 # `using` vs `typedef`
 
 Semantically the same thing but have some difference in allowed contexts and ease of usage in case of template aliasing. A *typedef-declaration* is an *init-statement* and is thus allowed in contexts which allow *init-statement*.
@@ -967,7 +1143,7 @@ for (typedef struct { int x; int y;} P; auto [x, y] : {P{1, 1}, {1, 2}, {3, 5}})
 }
 ```
 
-whereas an *alias-declaration* is **not** an *init-statement* and thus was not allowed in contexts which allow *init-statement* **until C++23**. **This inconsistency has between *typedef-declaration* and *alias-declaration* has been removed in C++23.**
+whereas an *alias-declaration* is **not** an *init-statement* and thus was not allowed in contexts which allow *init-statement* **until C++23**. **This inconsistency between *typedef-declaration* and *alias-declaration* has been removed in C++23.**
 
 ```cpp
 // C++ 11.
