@@ -45,13 +45,14 @@
     - [using-declaration](#using-declaration)
     - [using-directive](#using-directive)
 - [`using` vs `typedef`](#using-vs-typedef)
-- [Abbreviated function templates](#abbreviated-function-templates-since-c20)
 - [Lambda Expressions](#lambda-expressions-since-c11)
 - [`inline`](#inline)
     - [`inline` vs `static`](#inline-vs-static)
+- [Template Type Deduction Rules](#template-type-deduction-rules)
+- [`auto`](#auto)
+- [Abbreviated function templates](#abbreviated-function-templates-since-c20)
 - [Limitations](#limitations)
     - [Member function templates cannot be virtual](#member-function-templates-cannot-be-virtual)
-
 
 # Trivial Types
 
@@ -1166,15 +1167,6 @@ for (using Foo = int; Foo f : v) { (void)f; }
 - [stackoverflow](https://stackoverflow.com/questions/10747810/what-is-the-difference-between-typedef-and-using-in-c11)
 
 
-# Abbreviated function templates (since C++20)
-
-When `auto` appears in the parameter list of a function declaration or of a function template declaration, the declaration declares a function template, and one 'invented' template parameter for each `auto` is appended to the template parameter list. 
-
-```cpp
-void f1(auto); // same as template<class T> void f1(T)
-```
-
-Abbreviated function templates can be specialized like all function templates.
 
 # Lambda Expressions (since C++11)
 
@@ -1332,6 +1324,240 @@ On the other hand, `static` instructs the compiler to generate the function in e
 - [stackoverflow-inline-variables](https://stackoverflow.com/questions/38043442/how-do-inline-variables-work)
 - [cppreference](https://en.cppreference.com/w/cpp/language/inline)
 
+# Template Type Deduction Rules
+
+For a function template of the form 
+
+```cpp
+template<typename T>
+void f(ParamType param);
+
+f(expr);
+```
+there are three cases which affect the deduced type for T,
+
+### ParamType is a *reference* or *pointer*, but not a *Universal Reference*
+
+In this case type deduction goes like this,
+
+- If *expr*'s type is a reference, ignore the reference part
+- Then pattern-match *expr*'s type against *ParamType* to determine T
+
+For example, for the template
+
+```cpp
+template<typename T>
+void f(T& param);
+```
+
+and we've the following variables 
+
+```cpp
+int x = 25;
+const int cx = x;
+const int& rx = cx;
+```
+
+the deduced types for T and param are 
+
+```cpp
+f(x);           // T is int, param's type is int& 
+f(cx);          // T is const int, param's type is const int& 
+f(rx);          // T is const int, param's type is const int&
+```
+
+Type deduction works exactly the same way for *rvalue* reference parameters. If we were to change `T&` to `const T&`,
+
+```cpp
+template<typename T>
+void f(const T& param); // param is now a ref-to-const
+
+int x = 27;             // as before
+const int cx = x;       // as before
+const int& rx = x;      // as before
+
+f(x);                   // T is int, param's type is const int&
+f(cx);                  // T is int, param's type is const int&
+f(rx);                  // T is int, param's type is const int&
+```
+
+If param were a pointer, things behave similarly,
+
+```cpp
+template<typename T>
+void f(T* param);       // param is now a pointer
+
+int x = 27;             // as before
+const int *px = &x;     // px is a ptr to x as a const int
+
+f(&x);  // T is int, param's type is int*
+f(px);  // T is const int,
+        // param's type is const int*
+```
+
+### ParamType is a *Universal Reference*
+
+These are declared similar to rvalue references, for a function template with type param T, a universal reference has type `T&&`. They behave differently when *lvalues* are passed in,
+
+- If *expr* is lvalue, both T and *ParamType* are deduced to be lvalue references
+- Otherwise, if *expr* is rvalue, normal rvalue reference rules apply  
+
+```cpp
+template<typename T>
+void f(T&& param);      // param is now a universal reference
+
+int x = 27;             // as before
+const int cx = x;       // as before
+const int& rx = x;      // as before
+
+f(x);                   // x is lvalue, so T is int&,
+                        // param's type is also int&
+
+f(cx);                  // cx is lvalue, so T is const int&,
+                        // param's type is also const int&
+
+f(rx);                  // rx is lvalue, so T is const int&,
+                        // param's type is also const int&
+
+f(27);                  // 27 is rvalue, so T is int,
+                        // param's type is therefore int&&
+```
+
+### ParamType is neither a pointer nor a reference 
+
+```cpp
+template<typename T>
+void f(T param);
+```
+
+Since param will be a copy of whatever is passed, the following rules govern the type deduced for T,
+
+- If *expr*'s type is reference, ignore the reference part
+- If *expr* is *const* or *volatile*, ignore that too 
+
+```cpp
+int x = 27;         // as before
+const int cx = x;   // as before
+const int& rx = x;  // as before
+
+f(x);   // T's and param's types are both int
+f(cx);  // T's and param's types are again both int
+f(rx);  // T's and param's types are still both int
+```
+
+Even here the only the *const*-ness of the passed argument is ignored, the *const*-ness of whatever param points (or refers) to is preserved.
+
+```cpp
+template<typename T>
+void f(T param);        // param is still passed by value
+
+const char* const ptr = "const pointer to const"
+
+f(ptr);                 // T's type will be const char*
+```
+
+### Array Arguments
+
+```cpp
+template<typename T>
+void f(T param);
+
+const char[] name = "Some name";
+
+f(name);            // T's type is const char* 
+```
+
+We can't declare parameters of array type but we can declare parameters of type *reference* to arrays! In which case
+
+```cpp
+template<typename T>
+void f(T& param);
+
+f(name);        // T's type is const char[size] and param's type  
+                // is const char (&)[size]
+```
+
+This is useful in, for example, getting size of an array at compile-time,
+
+```cpp
+// return size of an array as a compile-time constant. (The
+// array parameter has no name, because we care only about
+// the number of elements it contains.)
+template<typename T, std::size_t N> // see info
+constexpr std::size_t arraySize(T (&)[N]) noexcept {
+    return N;
+}
+```
+
+### Function Arguments
+
+Similar to arrays, function types also decay to function pointers and things similar to arrays happen with function types
+
+```cpp
+void someFunc(int, double); // someFunc is a function;
+                            // type is void(int, double)
+template<typename T>
+void f1(T param);           // in f1, param passed by value
+
+template<typename T>
+void f2(T& param);          // in f2, param passed by ref
+
+f1(someFunc);               // param deduced as ptr-to-func;
+                            // type is void (*)(int, double)
+
+f2(someFunc);               // param deduced as ref-to-func;
+                            // type is void (&)(int, double)
+```
+
+- [Effective Modern C++](https://github.com/vpreethamkashyap/Library/blob/master/Scott%20Meyers-Effective%20Modern%20C%2B%2B_%2042%20Specific%20Ways%20to%20Improve%20Your%20Use%20of%20C%2B%2B11%20and%20C%2B%2B14-O'Reilly%20Media%20(2014).pdf)
+
+# `auto`
+
+`auto` type deduction follows exactly the same rules as template type deduction except for one case. For a variable declared with `auto`, `auto` plays the role of T in the template and the type specifier acts as the ParamType.
+
+```cpp
+auto x = 25;            // type specifier is auto
+const auto y = 25;      // type specifier is const auto
+const auto& z = 25;     // type specifier is const auto& 
+
+auto&& uref1 = x;       // x is int and lvalue,
+                        // so uref1's type is int&
+auto&& uref2 = cx;      // cx is const int and lvalue,
+                        // so uref2's type is const int&
+auto&& uref3 = 27;      // 27 is int and rvalue,
+                        // so uref3's type is int&&
+```
+
+The case where `auto` and template type deduction differ is when you declare a variable 
+with *braced-initializer*
+
+```cpp
+auto x = {2, 4, 5};     // x's type is std::initializer_list<int>
+auto y = {2.0, 5, 5};   // two type deductions, one for y -> std::initializer_list<T>
+                        // and second for T, which fails in this case
+
+template<typename T>
+void f(T param);
+
+f({2, 5, 5});           // Error! can't deduce type for T
+```
+
+So the only real difference between `auto` and template type deduction is that `auto`
+assumes that a braced initializer represents a `std::initializer_list`, but template
+type deduction doesn’t.
+
+`auto` as return or parameter type follows template type deduction.
+
+# Abbreviated function templates (since C++20)
+
+When `auto` appears in the parameter list of a function declaration or of a function template declaration, the declaration declares a function template, and one 'invented' template parameter for each `auto` is appended to the template parameter list. 
+
+```cpp
+void f1(auto); // same as template<class T> void f1(T)
+```
+
+Abbreviated function templates can be specialized like all function templates.
+
 # Limitations
 
 ## Member function templates cannot be virtual
@@ -1339,3 +1565,5 @@ On the other hand, `static` instructs the compiler to generate the function in e
 Member function templates cannot be declared virtual. This constraint is imposed because the usual implementation of the virtual function call mechanism uses a fixed-size table with one entry per virtual function. However, the number of instantiations of a member function template is not fixed until the entire program has been translated. Hence, supporting virtual member function templates would require support for a whole new kind of mechanism in C++ compilers and linkers. In contrast, the ordinary members of class templates can be virtual because their number is fixed when a class is instantiated
 
 - [stackoverflow](https://stackoverflow.com/questions/2354210/can-a-class-member-function-template-be-virtual)
+
+[def]: #auto
