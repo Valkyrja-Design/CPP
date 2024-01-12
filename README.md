@@ -4,6 +4,7 @@
 - [Scoped and Unscoped Enums](#scoped-and-unscoped-enums)
 - [Narrowing Conversions](#narrowing-conversions)
 - [User-provided Functions](#user-provided-functions)
+- [Nested Classes](#nested-classes)
 - [Default Constructors](#default-constructors)
     - [Implicitly-declared default constructor](#implicitly-declared-default-constructor)
     - [Implicitly-defined default constructor](#implicitly-defined-default-constructor)
@@ -51,12 +52,22 @@
 - [Template Type Deduction Rules](#template-type-deduction-rules)
 - [`auto`](#auto)
 - [Abbreviated function templates](#abbreviated-function-templates-since-c20)
-- [Limitations](#limitations)
-    - [Member function templates cannot be virtual](#member-function-templates-cannot-be-virtual)
+- [Value Categories](#value-categories)
+- [`decltype`](#decltype)
+- [Limitations](#tidbits)
 
 # Trivial Types
 
-A class or struct is trivial type if it has compiler-provided or explicitly defaulted special member functions. It occupies a contiguous region of memory and can have different access specifiers.
+Trivial types have trivial special member functions. Trivial means that the constructor/operator/destructor is not user-provided and belongs to a class that has 
+
+- no virtual functions or virtual base class,
+- no non-trivial base class,
+- no non-trivial data members 
+
+Trivial types occupy a contiguous memory region and can be reliably copied with `memcpy`. If it has different access specifiers then the compiler is free to order members with different access specifiers.
+
+- [Microsoft C++ Documentation](https://learn.microsoft.com/en-us/cpp/cpp/trivial-standard-layout-and-pod-types?view=msvc-170)
+
 
 # Scoped and Unscoped Enums
 
@@ -101,6 +112,105 @@ namespace CardGame_NonScoped
 ```
 
 - [Microsoft C++ documentation](https://learn.microsoft.com/en-us/cpp/cpp/enumerations-cpp?view=msvc-170)
+
+# Nested Classes
+
+We can declare a class within another class. Such a class is called a nested class. 
+
+The name of the nested class exists in the scope of the enclosing class, and name lookup from a member function of a nested class visits the scope of the enclosing class after examining the scope of the nested class.  
+Like any member of its enclosing class, **the nested class has access to all names (private, protected, etc) to which the enclosing class has access**, but it is otherwise **independent and has no special access to the this pointer of the enclosing class**.  
+Declarations in a nested class can use any members of the enclosing class, following the usual usage rules for the non-static members.
+
+**Friend functions defined within a nested class have no special access to the members of the enclosing class** even if lookup from the body of a member function that is defined within a nested class can find the private members of the enclosing class.
+
+```cpp
+int x, y; // globals
+class enclose // enclosing class
+{
+    // note: private members
+    int x;
+    static int s;
+public:
+    struct inner // nested class
+    {
+        void f(int i)
+        {
+            x = i; // Error: can't write to non-static enclose::x without instance
+            int a = sizeof x; // Error until C++11,
+                              // OK in C++11: operand of sizeof is unevaluated,
+                              // this use of the non-static enclose::x is allowed.
+            s = i;   // OK: can assign to the static enclose::s
+            ::x = i; // OK: can assign to global x
+            y = i;   // OK: can assign to global y
+        }
+ 
+        void g(enclose p, int i)
+        {
+            p.x = i; // OK: assign to enclose::x
+        }
+
+        friend void h()
+        {
+            // int a = sizeof x;    // Error: can't access private or protected members from a friend function 
+        }
+    };
+};
+```
+
+Out-of-class definitions of the members of a nested class appear in the namespace of the enclosing class.
+
+```cpp
+struct enclose
+{
+    struct inner
+    {
+        static int x;
+        void f(int i);
+    };
+};
+ 
+int enclose::inner::x = 1;       // definition
+void enclose::inner::f(int i) {} // definition
+```
+
+Nested classes can be forward-declared and later defined, either within the same enclosing class body, or outside of it.
+
+```cpp
+class enclose
+{
+    class nested1;    // forward declaration
+    class nested2;    // forward declaration
+    class nested1 {}; // definition of nested class
+};
+ 
+class enclose::nested2 {}; // definition of nested class
+```
+
+Nested class declarations obey member access specifiers, a private member class cannot be named outside the scope of the enclosing class, **although objects of that class may be manipulated**.
+
+```cpp
+class enclose
+{
+    struct nested // private member
+    {
+        void g() {}
+    };
+
+public:
+    static nested f() { return nested{}; }
+};
+ 
+int main()
+{
+    // enclose::nested n1 = enclose::f(); // error: 'nested' is private
+ 
+    enclose::f().g();       // OK: does not name 'nested'
+    auto n2 = enclose::f(); // OK: does not name 'nested'
+    n2.g();
+}
+```
+
+- [cppreference](https://en.cppreference.com/w/cpp/language/nested_types)
 
 # User-provided Functions
 
@@ -329,9 +439,18 @@ Similar to copy constructor. Deprecated if the class has an user-declared copy c
 
 If the class does not explicitly declare a move constructor, it'll be automatically generated if and only if the class does not have an user-declared copy constructor, copy-assignment operator, move-assignment operator and destructor.
 
+
 ### Move-assignment Operator 
 
 Similar to move constructor.
+
+### Destructor
+
+The destructor is auto-generated if there's no user-declared destructor. They're `noexcept` by default and `virtual` only if base class destructor is virtual.
+
+**Note**: The default move member functions will resort to copy member functions of the data member if the data member being moved is not move enabled.
+
+**Note**: Default generation of special member functions, except default constructor, is not prevented by templated versions of the special member functions .
 
 - [stackoverflow](https://stackoverflow.com/questions/4943958/conditions-for-automatic-generation-of-default-copy-move-ctor-and-copy-move-assi)
 - [Microsoft C++ documentation](https://learn.microsoft.com/en-us/cpp/cpp/explicitly-defaulted-and-deleted-functions?view=msvc-170)
@@ -403,8 +522,8 @@ This is performed when an object is constructed with an empty initializer.
 
 The effects of value-initialization are:
 
-- If the type T is class type with no [*default constructor*](#default-constructors) or with a user-declared, user-provided or deleted default constructor, the object is [*default-initialized*](#default-initialization). If no default constructor exists, this leads to a compilation error.
-- If the type T is class type with a default constructor that is not user-declared neither user-provided nor deleted (i.e., a class with an implicitly-defined or defaulted default constructor), the object is [*zero-initialized*](#zero-initialization) and and the semantic constraints for default-initialization are checked, and if T has a *non-trivial default constructor*, the object is [*default-initialized*](#default-initialization).
+- If the type T is class type with no [*default constructor*](#default-constructors) or with a **user-declared (until C++11)**, **user-provided or deleted default constructor (since C++11)**, the object is [*default-initialized*](#default-initialization). If no default constructor exists, this leads to a compilation error.
+- If the type T is class type with a default constructor that is not **user-declared (until C++11)** **neither user-provided nor deleted (since C++11)** (i.e., a class with an implicitly-defined or defaulted default constructor), the object is [*zero-initialized*](#zero-initialization) and and the semantic constraints for default-initialization are checked, and if T has a *non-trivial default constructor*, the object is [*default-initialized*](#default-initialization).
 - If T is an array type, each element of the array is value-initialized.
 - otherwise, the object is [*zero-initialized*](#zero-initialization).
 
@@ -777,6 +896,8 @@ An aggregate needs to be one of the following types:
     - no user-declared or inherited constructors (**since C++20**)
     - no private or protected non-static data members
     - no base classes (**until C++17**)
+    - no virtual, private or protected base classes (**since C++17**)
+    - no virtual member functions
     - no default member initializers (**since C++11, until C++14**)
 - [stackoverflow](https://stackoverflow.com/questions/4178175/what-are-aggregates-and-pods-and-how-why-are-they-special/7189821#7189821)
 
@@ -1558,12 +1679,122 @@ void f1(auto); // same as template<class T> void f1(T)
 
 Abbreviated function templates can be specialized like all function templates.
 
-# Limitations
+# Value Categories
 
-## Member function templates cannot be virtual
+Too much stuff...
 
-Member function templates cannot be declared virtual. This constraint is imposed because the usual implementation of the virtual function call mechanism uses a fixed-size table with one entry per virtual function. However, the number of instantiations of a member function template is not fixed until the entire program has been translated. Hence, supporting virtual member function templates would require support for a whole new kind of mechanism in C++ compilers and linkers. In contrast, the ordinary members of class templates can be virtual because their number is fixed when a class is instantiated
+- [cppreference](https://en.cppreference.com/w/cpp/language/value_category)
 
-- [stackoverflow](https://stackoverflow.com/questions/2354210/can-a-class-member-function-template-be-virtual)
+# `decltype`
 
-[def]: #auto
+`decltype` is used to get the type of an expression or a name, it usually tells you the exact type of the expression or name you pass it to like so 
+
+`decltype`'s primary use is when the return type in function templates depends on the parameter types 
+
+```cpp
+template<typename T, typename U>
+decltype(auto) add(T t, U u){
+    return t + u;
+};
+```
+
+The following rules govern the type returned by `decltype(E)`:
+
+- If `E` is an unparenthesized id-expression (essentially a variable name) or a class member access then `decltype(E)` returns the exact type with which `E` was declared
+- Otherwise if `E` is any other expression of type `T` and  
+    - if the value category of `E` is *xvalue*, then `decltype` yields `T&&`,
+    - if the value category of `E` is *lvalue*, then `decltype` yields `T&`,
+    - if the value category of `E` is *prvalue*, then `decltype` yields `T`
+    - the above resultant types are subject to **reference collapsing**
+
+```cpp
+constexpr int x;
+decltype(x) y;          // type of y is const int 
+decltype((x)) z;        // type of z is const int&, (x) is lvalue expression
+
+struct A{
+    double x;
+};
+
+const A* ptr;
+decltype((ptr)) p;          // const A* &, reference to pointer to const
+decltype(ptr->x) x;         // double
+decltype((ptr->x)) x;       // const double&, type of (ptr->x) is const double
+
+decltype(5) x;              // int, 5 is prvalue
+decltype("string") str;     // const char (&)[7], string literal is an lvalue stored 
+                            // as char[] in memory
+decltype(("string")) str;   // ditto
+
+void foo(int);
+decltype(foo) f;            // void (int), since name
+decltype((foo)) f;          // void (&)(int), since lvalue expression
+
+struct B{
+    static int x;
+    int y;
+    int& lvalref = x;
+    int&& rvalref = std::move(x);
+    int& otherlvalref = y;
+    int&& otherrvalref = 5;
+};
+
+B foo();
+
+decltype(B::x) x;           // int
+decltype((B::x)) x;         // int&
+decltype(B::lvalref) x;     // int&
+decltype((B::lvalref)) x;   // int&, lvalue expression
+decltype(B::rvalref) x;     // int&&
+decltype((B::rvalref)) x;   // int&, rvalref is lvalue
+                            // ditto for otherrefs
+decltype(B{}.lvalref) x;    // int& unparenthesized member access,  
+decltype((B{}.lvalref)) x;  // int&, B{}.lvalref is lvalue expression
+                            // because lvalref is not of object type
+decltype(B{}.rvalref) x;    // int&&, member access
+decltype((B{}.rvalref)) x;  // int&, lvalue expression and reference collapsing
+decltype((B{}.x)) x;        // int&, static data member so B{}.x is lvalue
+decltype((B{}.y)) x;        // int&&, B{}.y is xvalue since y is non-static
+
+/* same for foo().stuff */
+``` 
+
+`decltype` is also useful when you want to use the type of a lambda like so
+
+```cpp
+auto comp = [](const auto& left, const auto& right){
+        return left < right;
+};
+
+// creating a set with custom comparator
+std::set<int, decltype(comp)> s{comp};
+```
+
+- [cppreference](https://en.cppreference.com/w/cpp/language/decltype)
+- [blog post by David Mazieres](https://www.scs.stanford.edu/~dm/blog/decltype.pdf)
+
+# Tidbits
+
+- You can use the non-static data members of a class in unevaluated operands but can't do that for non-static member functions like so
+
+    ```cpp
+    struct A{
+        int x = 2;
+        
+        // static const int m = x;          // Error: no this pointer when initializing the static var
+        static const int m = sizeof(x);     // OK: x in unevaluated operand
+
+        int foo(){}
+    };
+
+    decltype(A::x) x;       // OK: even though x doesn't belong to a class but an object of it
+
+    // decltype(A::foo()) x;   // Error: because even though the call isn't actually made foo()
+    //                         // needs the *this* pointer i.e., it must be called on an object 
+    ```
+
+    - [cppreference](https://en.cppreference.com/w/cpp/language/data_members#Usage)
+
+- Member function templates cannot be declared virtual. This constraint is imposed because the usual implementation of the virtual function call mechanism uses a fixed-size table with one entry per virtual function. However, the number of instantiations of a member function template is not fixed until the entire program has been translated. Hence, supporting virtual member function templates would require support for a whole new kind of mechanism in C++ compilers and linkers. In contrast, the ordinary members of class templates can be virtual because their number is fixed when a class is instantiated
+    - [stackoverflow](https://stackoverflow.com/questions/2354210/can-a-class-member-function-template-be-virtual)
+

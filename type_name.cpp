@@ -54,7 +54,56 @@ void func(){
     std::cout << __PRETTY_FUNCTION__ << '\n';
 }
 
+struct A{
+    int x;
+    static int y;
+};
+
+void foo(){}
+
+A a;
+const A* ptr;
+
+struct B{
+    static int x;
+    int y;
+    int& lvalref = x;
+    int&& rvalref = std::move(x);
+    int& otherlvalref = y;
+    int&& otherrvalref = 5;
+};
+
+int B::x = 5;
+B goo(){ return B{}; }
+
 int main(){
     constexpr int x = 2;
     func<int, x>();
+    
+    std::cout << type_name<decltype(ptr->x)>() << '\n'
+              << type_name<decltype((ptr->x))>() << '\n'
+              << type_name<decltype(B::lvalref)>() << '\n'  
+              << type_name<decltype((B::lvalref))>() << '\n'
+              << type_name<decltype(B::rvalref)>() << '\n'
+              << type_name<decltype((B::rvalref))>() << '\n'
+              << type_name<decltype(B::otherlvalref)>() << '\n'  
+              << type_name<decltype((B::otherlvalref))>() << '\n'
+              << type_name<decltype(B::otherrvalref)>() << '\n'
+              << type_name<decltype((B::otherrvalref))>() << '\n'
+              << type_name<decltype(B{}.lvalref)>() << '\n'
+              << type_name<decltype((B{}.lvalref))>() << '\n'
+              << type_name<decltype(B{}.rvalref)>() << '\n'
+              << type_name<decltype((B{}.rvalref))>() << '\n'
+              << type_name<decltype(B{}.otherlvalref)>() << '\n'
+              << type_name<decltype((B{}.otherlvalref))>() << '\n'
+              << type_name<decltype(B{}.otherrvalref)>() << '\n'
+              << type_name<decltype((B{}.otherrvalref))>() << '\n'
+              << type_name<decltype((B{}.x))>() << '\n'
+              << type_name<decltype((B{}.y))>() << '\n'
+              << type_name<decltype(goo().lvalref)>() << '\n'
+              << type_name<decltype((goo().lvalref))>() << '\n'
+              << type_name<decltype(goo().rvalref)>() << '\n'
+              << type_name<decltype((goo().lvalref))>() << '\n'
+              << type_name<decltype((goo().x))>() << '\n'
+              << type_name<decltype((goo().y))>() << '\n';
 }
